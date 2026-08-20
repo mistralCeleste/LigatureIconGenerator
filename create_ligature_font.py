@@ -15,6 +15,6 @@ if __name__ == "__main__":
         base_font_path = "SourceSans3-Regular.ttf",
         font_family = "GameIcons",
         font_weight = "Regular",
-        feature_tag = "icon",
+        feature_tag = "liga",
         start_unicode = 0xE000 # Basic Private Use Area (PUA-A)
     )

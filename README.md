@@ -48,13 +48,19 @@ FontBuilder.create_ligature_font(
     font_family="MyIcons",
     font_weight="Regular",
     base_font_path=None,
-    feature_tag="icon",
+    feature_tag="liga",
     start_unicode=0xE000, # Basic Private Use Area (PUA-A)
 )
 ```
 
 `base_font_path` is a local font path/filename. A relative local font path is
 resolved relative to `input_dir`. If it is omitted, the generator creates an empty font.
+
+Note that if `feature_tag` is omitted, the generator uses the default value `liga`.
+Common values to use are `liga`, `dlig`, or `calt`. Most apps have liga enabled by default.
+If using anything else, custom, like 'icon', it may become unusable by standard apps,
+and it must be referenced directly, like with a custom CSS reference.
+
 
 ## Output
 

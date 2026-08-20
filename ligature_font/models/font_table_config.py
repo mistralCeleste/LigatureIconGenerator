@@ -5,10 +5,8 @@ from typing import Tuple
 @dataclass(frozen=True)
 class FontTableConfig:
     """Configuration for GSUB OpenType feature tables."""
-    lookup_name: str = "icon"
-    subtable_name: str = "icon subtable"
+    lookup_name: str
+    subtable_name: str
     lookup_type: str = "gsub_ligature"
     flags: Tuple = field(default_factory=tuple)
-    features: Tuple = field(
-        default_factory=lambda: (("icon", (("latn", "dflt"),)),)
-    )
+    features: Tuple = field(default_factory=tuple)

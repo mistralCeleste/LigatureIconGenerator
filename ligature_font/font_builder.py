@@ -49,6 +49,20 @@ class FontBuilder:
 
 
     @classmethod
+    def find_gsub_lookup(
+            cls,
+            font: fontforge.font,
+            feature_tag: str
+    ) -> str | None:
+        found = None
+        for lookup in font.gsub_lookups:
+            if feature_tag in lookup:
+                found = str(lookup)
+                break
+        return found
+
+
+    @classmethod
     def process_vectors_into_ligatures(
         cls,
         input_dir: str,
@@ -60,17 +74,22 @@ class FontBuilder:
         table_config = FontTableConfig(
             lookup_name=gsub_feature_tag,
             subtable_name=f"{gsub_feature_tag} subtable",
-            features=((gsub_feature_tag, (("latn", "dflt"),)),)
+            lookup_type="gsub_ligature",
+            flags=(),
+            features=((gsub_feature_tag, (("latn", ("dflt",)),)),)
         )
 
-        font.addLookup(
-            table_config.lookup_name,
-            table_config.lookup_type,
-            table_config.flags,
-            table_config.features
-        )
+        lookup = cls.find_gsub_lookup(font, gsub_feature_tag)
+        if not lookup:
+            lookup = table_config.lookup_name
+            font.addLookup(
+                table_config.lookup_name,
+                table_config.lookup_type,
+                table_config.flags,
+                table_config.features
+            )
 
-        font.addLookupSubtable(table_config.lookup_name, table_config.subtable_name)
+        font.addLookupSubtable(lookup, table_config.subtable_name)
         glyph_builder = SVGGlyphBuilder(font, table_config, start_unicode)
         glyphs_info = glyph_builder.process_svg_directory(input_dir)
         glyph_builder.ensure_numeric_glyphs()

@@ -1,6 +1,6 @@
 ﻿import os
 import fontforge
-from typing import Optional, List
+from typing import Callable, List, Optional, Tuple
 
 from .loaders import FontLoader, SVGGlyphLoader
 from .generators import DemoWebArtifactGenerator
@@ -11,8 +11,8 @@ from .font_build_target_settings import FontBuildTargetSettings
 
 class FontBuilder:
     """
-    Maintains persistent rules (e.g., LigatureConfig) while building
-    loaders across various SVG input directories and font metadata.
+    Maintains persistent rules (e.g., FontTableConfig) while building
+    fonts across various SVG input directories and font metadata.
     """
 
     WEIGHT_MAP = {
@@ -51,23 +51,19 @@ class FontBuilder:
     ) -> Optional[str]:
         if not target_path:
             return None
-        return target_path if os.path.isabs(target_path) else os.path.join(base_dir, target_path)
+        return target_path if os.path.isabs(target_path) else os.path.normpath(os.path.join(base_dir, target_path))
 
-
-    def load_font(
-        self,
-        input_dir: str,
-        metadata: FontBuildTargetSettings
-    ) -> fontforge.font:
-        resolved_base_path = self._resolve_path(input_dir, metadata.base_font_path)
+    def load_font(self, settings: FontBuildTargetSettings) -> fontforge.font:
+        abs_input_dir = os.path.abspath(settings.input_dir)
+        resolved_base_path = self._resolve_path(abs_input_dir, settings.base_font_path)
 
         if resolved_base_path and not os.path.exists(resolved_base_path):
             raise FileNotFoundError(f"Base font file does not exist: {resolved_base_path}")
 
         font = FontLoader.load_font(resolved_base_path)
-        font.familyname = metadata.font_family
-        font.weight = metadata.font_weight
-        font.os2_weight = self.get_os2_font_weight(metadata.font_weight)
+        font.familyname = settings.font_family
+        font.weight = settings.font_weight
+        font.os2_weight = self.get_os2_font_weight(settings.font_weight)
         font.fontname = f"{font.familyname}-{font.weight}"
         font.fullname = f"{font.familyname} {font.weight}"
         return font
@@ -107,6 +103,7 @@ class FontBuilder:
         glyph_builder.apply_standard_symbol_shortcuts()
         return glyphs_info
 
+
     @staticmethod
     def export_font(
         font: fontforge.font,
@@ -122,7 +119,6 @@ class FontBuilder:
             font.generate(f"{output_path}.ttf")
             font.generate(f"{output_path}.woff")
             font.generate(f"{output_path}.woff2")
-
             DemoWebArtifactGenerator.generate_all(output_dir, font.familyname, glyphs_info)
             print(f"Font successfully exported to: {output_path}")
         except Exception as e:
@@ -131,17 +127,43 @@ class FontBuilder:
         return output_path
 
 
+    def load_and_process_glyphs(
+            self,
+            font_build_settings: FontBuildTargetSettings
+    ) -> Tuple[fontforge.font, List[GlyphInfo]]:
+        font = self.load_font(font_build_settings)
+        abs_input_dir = os.path.abspath(font_build_settings.input_dir)
+        glyphs_info = self.process_vectors_into_ligatures(font, abs_input_dir)
+        return font, glyphs_info
+
+
     def build(
         self,
         font_build_settings: FontBuildTargetSettings,
-    ) -> fontforge.font:
+    ) -> None:
         """
-        Builds a single font set given an input directory and target metadata,
-        reusing the instance's LigatureConfig settings.
+        Builds a single font set given target build settings,
+        reusing the instance's FontTableConfig settings.
         """
         abs_input_dir = os.path.abspath(font_build_settings.input_dir)
+        font, glyphs_info = self.load_and_process_glyphs(font_build_settings)
         abs_output_dir = self._resolve_path(abs_input_dir, font_build_settings.output_dir) or abs_input_dir
-        font = self.load_font(abs_input_dir, font_build_settings)
-        glyphs_info = self.process_vectors_into_ligatures(font, abs_input_dir)
         self.export_font(font, abs_output_dir, glyphs_info)
-        return font
+        font.close()
+
+
+    def build_variant(
+        self,
+        font_build_settings: FontBuildTargetSettings,
+        font_transform: Callable[[fontforge.font], None],
+    ) -> None:
+        """
+        Builds a single font set given target build settings,
+        reusing the instance's FontTableConfig settings.
+        """
+        abs_input_dir = os.path.abspath(font_build_settings.input_dir)
+        font, glyphs_info = self.load_and_process_glyphs(font_build_settings)
+        font_transform(font)
+        abs_output_dir = self._resolve_path(abs_input_dir, font_build_settings.output_dir) or abs_input_dir
+        self.export_font(font, abs_output_dir, glyphs_info)
+        font.close()

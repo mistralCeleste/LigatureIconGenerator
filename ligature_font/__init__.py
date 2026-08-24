@@ -1,22 +1,19 @@
-"""Building blocks for generating ligature icon fonts from SVG directories.
+"""Building blocks for generating ligature icon loaders from SVG directories.
 
 The pieces are assembled by ``create_ligature_font`` in ``create_ligature_font.py``.
 """
 
-from .fonts import FontLoader, SVGGlyphBuilder
-from .models import FontTableConfig, GlyphInfo
-from .name_sanitizer import NameSanitizer
+from .loaders import FontLoader, SVGGlyphLoader, FontTableConfig, UnicodeBlock
 from .font_builder import FontBuilder
-from .web import DemoWebArtifactGenerator
-from .unicode_block import UnicodeBlock
+from .glyph_info import GlyphInfo
+from .font_build_target_settings import FontBuildTargetSettings
 
 __all__ = [
-    "DemoWebArtifactGenerator",
     "FontLoader",
     "FontBuilder",
+    "FontBuildTargetSettings",
     "FontTableConfig",
     "GlyphInfo",
-    "NameSanitizer",
-    "SVGGlyphBuilder",
+    "SVGGlyphLoader",
     "UnicodeBlock"
 ]

@@ -2,148 +2,146 @@
 import fontforge
 from typing import Optional, List
 
-from .unicode_block import UnicodeBlock
-from .fonts import FontLoader, SVGGlyphBuilder
-from .models import FontTableConfig, GlyphInfo
-from .web import DemoWebArtifactGenerator
+from .loaders import FontLoader, SVGGlyphLoader
+from .generators import DemoWebArtifactGenerator
+from .font_table_config import FontTableConfig
+from .glyph_info import GlyphInfo
+from .font_build_target_settings import FontBuildTargetSettings
+
 
 class FontBuilder:
-    """Builds a font from SVG glyphs."""
+    """
+    Maintains persistent rules (e.g., LigatureConfig) while building
+    loaders across various SVG input directories and font metadata.
+    """
 
-    @staticmethod
-    def get_os2_font_weight(
-            font_weight: str
+    WEIGHT_MAP = {
+        "Thin": 100,
+        "ExtraLight": 200,
+        "Light": 300,
+        "Regular": 400,
+        "Bold": 700,
+        "ExtraBold": 800,
+        "Black": 900
+    }
+
+
+    def __init__(
+        self,
+        font_table_config: Optional[FontTableConfig] = None
     ):
-        if font_weight == "Thin":
-            return 100
-        if font_weight == "ExtraLight":
-            return 200
-        if font_weight == "Light":
-            return 300
-        elif font_weight == "Regular":
-            return 400
-        elif font_weight == "Bold":
-            return 700
-        elif font_weight == "ExtraBold":
-            return 800
-        elif font_weight == "Black":
-            return 900
-        else:
-            raise ValueError(f"Invalid font weight: {font_weight}")
+        """Initialize the builder with persistent ligature generation rules."""
+        self.font_table_config = font_table_config or FontTableConfig()
 
 
     @classmethod
-    def load_font(
+    def get_os2_font_weight(
         cls,
-        font_family: str,
-        font_weight: str = "Regular",
-        base_font_full_path: Optional[str] = None,
-    ):
-        font = FontLoader.load_font(base_font_full_path)
-        font.familyname = font_family
-        font.weight = font_weight
-        font.os2_weight = cls.get_os2_font_weight(font_weight)
-        font.fontname = f"{font_family}-{font_weight}"
-        font.fullname = f"{font_family} {font_weight}"
+        font_weight: str
+    ) -> int:
+        if font_weight in cls.WEIGHT_MAP:
+            return cls.WEIGHT_MAP[font_weight]
+        raise ValueError(f"Invalid font weight: {font_weight}. Expected one of {list(cls.WEIGHT_MAP.keys())}")
+
+
+    @staticmethod
+    def _resolve_path(
+        base_dir: str,
+        target_path: Optional[str]
+    ) -> Optional[str]:
+        if not target_path:
+            return None
+        return target_path if os.path.isabs(target_path) else os.path.join(base_dir, target_path)
+
+
+    def load_font(
+        self,
+        input_dir: str,
+        metadata: FontBuildTargetSettings
+    ) -> fontforge.font:
+        resolved_base_path = self._resolve_path(input_dir, metadata.base_font_path)
+
+        if resolved_base_path and not os.path.exists(resolved_base_path):
+            raise FileNotFoundError(f"Base font file does not exist: {resolved_base_path}")
+
+        font = FontLoader.load_font(resolved_base_path)
+        font.familyname = metadata.font_family
+        font.weight = metadata.font_weight
+        font.os2_weight = self.get_os2_font_weight(metadata.font_weight)
+        font.fontname = f"{font.familyname}-{font.weight}"
+        font.fullname = f"{font.familyname} {font.weight}"
         return font
 
 
-    @classmethod
+    @staticmethod
     def find_gsub_lookup(
-            cls,
-            font: fontforge.font,
-            feature_tag: str
-    ) -> str | None:
-        found = None
+        font: fontforge.font,
+        feature_tag: str
+    ) -> Optional[str]:
         for lookup in font.gsub_lookups:
             if feature_tag in lookup:
-                found = str(lookup)
-                break
-        return found
+                return str(lookup)
+        return None
 
 
-    @classmethod
     def process_vectors_into_ligatures(
-        cls,
-        input_dir: str,
+        self,
         font: fontforge.font,
-        gsub_feature_tag: str,
-        start_unicode: int
+        input_dir: str
     ) -> List[GlyphInfo]:
+        lookup = self.find_gsub_lookup(font, self.font_table_config.lookup_name)
 
-        table_config = FontTableConfig(
-            lookup_name=gsub_feature_tag,
-            subtable_name=f"{gsub_feature_tag} subtable",
-            lookup_type="gsub_ligature",
-            flags=(),
-            features=((gsub_feature_tag, (("latn", ("dflt",)),)),)
-        )
-
-        lookup = cls.find_gsub_lookup(font, gsub_feature_tag)
         if not lookup:
-            lookup = table_config.lookup_name
+            lookup = self.font_table_config.lookup_name
             font.addLookup(
-                table_config.lookup_name,
-                table_config.lookup_type,
-                table_config.flags,
-                table_config.features
+                self.font_table_config.lookup_name,
+                self.font_table_config.lookup_type,
+                self.font_table_config.flags,
+                self.font_table_config.features
             )
 
-        font.addLookupSubtable(lookup, table_config.subtable_name)
-        glyph_builder = SVGGlyphBuilder(font, table_config, start_unicode)
+        font.addLookupSubtable(lookup, self.font_table_config.subtable_name)
+        glyph_builder = SVGGlyphLoader(font, self.font_table_config)
         glyphs_info = glyph_builder.process_svg_directory(input_dir)
         glyph_builder.ensure_numeric_glyphs()
         glyph_builder.apply_standard_symbol_shortcuts()
         return glyphs_info
 
-
-    @classmethod
+    @staticmethod
     def export_font(
-        cls,
-        output_dir: str,
         font: fontforge.font,
+        output_dir: str,
         glyphs_info: List[GlyphInfo]
     ) -> str:
-        """
-        Generates OTF/TTF fonts and CSS/HTML preview files from an SVG directory.
-        """
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+
         output_path = os.path.join(output_dir, font.fontname)
         try:
             font.generate(f"{output_path}.otf")
             font.generate(f"{output_path}.ttf")
             font.generate(f"{output_path}.woff")
-            font.generate(f"{output_path}.woff2") # note: requires libwoff2 binary
+            font.generate(f"{output_path}.woff2")
+
             DemoWebArtifactGenerator.generate_all(output_dir, font.familyname, glyphs_info)
-            print(f"Font generated successfully: {output_path}")
+            print(f"Font successfully exported to: {output_path}")
         except Exception as e:
-            print(f"Error generating font binaries: {str(e)}")
+            print(f"Error generating font files: {str(e)}")
+
         return output_path
 
 
-    @classmethod
-    def create_ligature_font(
-        cls,
-        input_dir: str,
-        output_dir: str,
-        font_family: str,
-        font_weight: str,
-        base_font_path: str,
-        feature_tag: str,
-        start_unicode: int = UnicodeBlock.PUA_BASIC
+    def build(
+        self,
+        font_build_settings: FontBuildTargetSettings,
     ) -> fontforge.font:
         """
-        Generates OTF/TTF fonts given the font details and CSS/HTML preview files from an SVG directory.
+        Builds a single font set given an input directory and target metadata,
+        reusing the instance's LigatureConfig settings.
         """
-        resolved_font_path = base_font_path if os.path.isabs(base_font_path) else os.path.join(input_dir, base_font_path)
-        resolved_output_dir = output_dir if os.path.isabs(output_dir) else os.path.join(input_dir, output_dir)
-
-        if not os.path.exists(resolved_font_path):
-            raise ValueError(f"Base font path does not exist: {resolved_font_path}")
-
-        if not os.path.exists(resolved_output_dir):
-            os.makedirs(resolved_output_dir)
-
-        font = cls.load_font(font_family, font_weight, resolved_font_path)
-        glyphs_info = cls.process_vectors_into_ligatures(input_dir, font, feature_tag, start_unicode)
-        cls.export_font(resolved_output_dir, font, glyphs_info)
+        abs_input_dir = os.path.abspath(font_build_settings.input_dir)
+        abs_output_dir = self._resolve_path(abs_input_dir, font_build_settings.output_dir) or abs_input_dir
+        font = self.load_font(abs_input_dir, font_build_settings)
+        glyphs_info = self.process_vectors_into_ligatures(font, abs_input_dir)
+        self.export_font(font, abs_output_dir, glyphs_info)
         return font

@@ -1,7 +1,8 @@
-from ligature_font import FontBuilder, UnicodeBlock
+from ligature_font import FontBuilder, FontBuildTargetSettings
+
 
 """
-Sample script that Generates OTF/TTF/WOFF/WOFF2 fonts given the font resources
+Sample script that Generates OTF/TTF/WOFF/WOFF2 loaders given the font resources
 and CSS/HTML preview files from an SVG directory.
 
 note:
@@ -11,12 +12,14 @@ note:
 
 
 if __name__ == "__main__":
-    FontBuilder.create_ligature_font(
-        input_dir = r"./resources",
-        output_dir="./output",
-        base_font_path = "./SourceSans3-Regular.ttf",
-        font_family = "GameIcons",
-        font_weight = "Regular",
-        feature_tag = "liga",
-        start_unicode = UnicodeBlock.PUA_BASIC
+    font_builder = FontBuilder()
+
+    font_build_settings = FontBuildTargetSettings(
+        input_dir=r"./resources/GameIcons",
+        output_dir = "./.build",
+        font_family="GameIcons",
+        font_weight="Regular",
+        base_font_path="../SourceSans3-Regular.ttf"
     )
+
+    font_builder.build(font_build_settings)

@@ -1,7 +1,7 @@
 import os
 from typing import List
 
-from ..models import GlyphInfo
+from ..glyph_info import GlyphInfo
 
 
 

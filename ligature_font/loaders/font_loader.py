@@ -6,7 +6,7 @@ import fontforge
 
 
 class FontLoader:
-    """Handles downloading base fonts and loading FontForge font instances."""
+    """Handles downloading base loaders and loading FontForge font instances."""
 
     BASE_FONT_URL = "https://github.com/adobe-fonts/source-sans/raw/refs/heads/release/TTF/SourceSans3-Regular.ttf"
 

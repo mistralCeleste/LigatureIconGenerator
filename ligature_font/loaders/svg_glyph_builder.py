@@ -1,28 +1,24 @@
 from pathlib import Path
 from typing import List
 
-from ..models import FontTableConfig, GlyphInfo
-from ..name_sanitizer import NameSanitizer
+from ..glyph_info import GlyphInfo
+from .name_sanitizer import NameSanitizer
+from ligature_font.font_table_config import FontTableConfig
 
 
 
-class SVGGlyphBuilder:
+class SVGGlyphLoader:
     """Imports SVG vectors and attaches bracketed GSUB ligature definitions."""
 
 
     def __init__(
             self,
             font,
-            table_config: FontTableConfig,
-            start_unicode: int = 0xE000,
-            ligature_start: str = 'bracketleft',
-            ligature_end: str = 'bracketright'
+            table_config: FontTableConfig
     ):
         self.font = font
         self.table_config = table_config
-        self.current_unicode = start_unicode
-        self.ligature_start = ligature_start
-        self.ligature_end = ligature_end
+        self.current_unicode = table_config.start_unicode
 
 
     def process_svg_directory(self, input_dir: str) -> List[GlyphInfo]:
@@ -48,8 +44,10 @@ class SVGGlyphBuilder:
                 ]
 
                 if components:
-                    components.insert(0, self.ligature_start)
-                    components.append(self.ligature_end)
+                    if self.table_config.ligature_start:
+                        components.insert(0, self.table_config.ligature_start)
+                    if self.table_config.ligature_end:
+                        components.append(self.table_config.ligature_end)
                     glyph.addPosSub(self.table_config.subtable_name, tuple(components))
                     print(f"Processed: {svg_path.name} as {glyph_name} with components [{', '.join(components)}]")
 
@@ -73,9 +71,9 @@ class SVGGlyphBuilder:
 
 
     def ensure_numeric_glyphs(self):
-        """Ensures word-based numbers exist in the font when using base fonts."""
-        for i in range(10):
-            glyph_name = NameSanitizer.number_to_word(i)
+        """Ensures word-based numbers exist in the font when using base loaders."""
+        for word in range(10):
+            glyph_name = NameSanitizer.number_to_word(str(word))
             if glyph_name not in self.font:
                 glyph = self.font.createChar(-1, glyph_name)
-                glyph.width = self.font[str(i)].width if str(i) in self.font else 500
+                glyph.width = self.font[str(word)].width if str(word) in self.font else 500

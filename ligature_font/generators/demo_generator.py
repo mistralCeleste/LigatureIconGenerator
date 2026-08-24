@@ -1,6 +1,6 @@
 from typing import List
 
-from ..models import GlyphInfo
+from ..glyph_info import GlyphInfo
 from .css_writer import CssStylesheetWriter
 from .html_writer import HtmlShowcaseWriter
 

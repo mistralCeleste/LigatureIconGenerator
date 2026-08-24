@@ -23,7 +23,7 @@ as the ligature name. For example:
 ./glyphs/
 |-- alarm.svg
 |-- arrow-right.svg
-`-- github.svg
+|-- github.svg
 ```
 
 The generated font can then be used with ligatures such as `alarm`,
@@ -42,16 +42,16 @@ Run this with FontForge's Python interpreter from the project directory:
 For a custom input directory, use the API directly:
 
 ```python
-from ligature_font import FontBuilder
+from ligature_font import FontBuilder, UnicodeBlock
 
 FontBuilder.create_ligature_font(
     input_dir=r"C:\path\to\glyphs",
     output_dir=r"C:\path\to\compile-font-files",
     font_family="MyIcons",
     font_weight="Regular",
-    base_font_path=None,
+    base_font_path = "./base-font/SourceSans3-Regular.ttf",
     feature_tag="liga",
-    start_unicode=0xE000, # Basic Private Use Area (PUA-A)
+    start_unicode=UnicodeBlock.PUA_BASIC, # Basic Private Use Area (PUA-A)
 )
 ```
 

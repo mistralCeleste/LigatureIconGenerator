@@ -10,19 +10,24 @@ class CssStylesheetWriter:
 
 
     @staticmethod
-    def write(input_dir: str, output_name: str, glyphs_info: List[GlyphInfo]) -> str:
-        css_content = f"""/* {output_name} Font CSS */
+    def write(
+            output_dir: str,
+            font_name: str,
+            glyphs_info: List[GlyphInfo]
+    ) -> str:
+        font_name_lower = font_name.lower()
+        css_content = f"""/* {font_name} Font CSS */
 @font-face {{
-    font-family: '{output_name}';
-    src: url('{output_name}.woff2') format('woff2'),
-         url('{output_name}.woff') format('woff'),
-         url('{output_name}.ttf') format('truetype');
+    font-family: '{font_name}';
+    src: url('{font_name}.woff2') format('woff2'),
+         url('{font_name}.woff') format('woff'),
+         url('{font_name}.ttf') format('truetype');
     font-weight: normal;
     font-style: normal;
 }}
 
-.{output_name.lower()} {{
-    font-family: '{output_name}';
+.{font_name_lower} {{
+    font-family: '{font_name}';
     font-weight: normal;
     font-style: normal;
     font-size: 24px;
@@ -34,9 +39,9 @@ class CssStylesheetWriter:
 """
         for info in glyphs_info:
             css_class = info.name.replace('_', '-').lower()
-            css_content += f".{output_name.lower()}-{css_class}::before {{ content: '\\{info.unicode_value:04X}'; }}\n"
+            css_content += f".{font_name_lower.lower()}-{css_class}::before {{ content: '\\{info.unicode_value:04X}'; }}\n"
 
-        css_path = os.path.join(input_dir, f"{output_name}.css")
+        css_path = os.path.join(output_dir, f"{font_name_lower}.css")
         with open(css_path, 'w', encoding='utf-8') as f:
             f.write(css_content)
         return css_path

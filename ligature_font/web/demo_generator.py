@@ -10,12 +10,12 @@ class DemoWebArtifactGenerator:
 
 
     @staticmethod
-    def generate_all(input_dir: str, output_name: str, glyphs_info: List[GlyphInfo]):
+    def generate_all(output_dir: str, font_name: str, glyphs_info: List[GlyphInfo]):
         if not glyphs_info:
             return
 
-        css_path = CssStylesheetWriter.write(input_dir, output_name, glyphs_info)
-        html_path = HtmlShowcaseWriter.write(input_dir, output_name, glyphs_info)
+        css_path = CssStylesheetWriter.write(output_dir, font_name, glyphs_info)
+        html_path = HtmlShowcaseWriter.write(output_dir, font_name, glyphs_info)
 
         print(f"CSS generated: {css_path}")
         print(f"HTML Demo generated: {html_path}")

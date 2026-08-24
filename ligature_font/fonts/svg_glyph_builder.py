@@ -26,7 +26,7 @@ class SVGGlyphBuilder:
 
 
     def process_svg_directory(self, input_dir: str) -> List[GlyphInfo]:
-        svg_files = list(Path(input_dir).glob("*.svg"))
+        svg_files = list(Path(input_dir).glob("**/*.svg"))
         glyphs_info: List[GlyphInfo] = []
 
         for svg_path in svg_files:

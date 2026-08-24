@@ -8,6 +8,7 @@ from .models import FontTableConfig, GlyphInfo
 from .name_sanitizer import NameSanitizer
 from .font_builder import FontBuilder
 from .web import DemoWebArtifactGenerator
+from .unicode_block import UnicodeBlock
 
 __all__ = [
     "DemoWebArtifactGenerator",
@@ -17,4 +18,5 @@ __all__ = [
     "GlyphInfo",
     "NameSanitizer",
     "SVGGlyphBuilder",
+    "UnicodeBlock"
 ]

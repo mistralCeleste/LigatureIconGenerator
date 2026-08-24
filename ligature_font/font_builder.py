@@ -9,7 +9,6 @@ from .web import DemoWebArtifactGenerator
 class FontBuilder:
     """Builds a font from SVG glyphs."""
 
-
     @staticmethod
     def get_os2_font_weight(
             font_weight: str
@@ -101,17 +100,20 @@ class FontBuilder:
     def export_font(
         cls,
         input_dir: str,
+        output_dir: str,
         font: fontforge.font,
         glyphs_info: List[GlyphInfo]
     ) -> str:
         """
         Generates OTF/TTF fonts and CSS/HTML preview files from an SVG directory.
         """
-        output_path = os.path.join(input_dir, font.fontname)
+        output_path = os.path.join(output_dir, font.fontname)
         try:
             font.generate(f"{output_path}.otf")
             font.generate(f"{output_path}.ttf")
-            DemoWebArtifactGenerator.generate_all(input_dir, font.familyname, glyphs_info)
+            font.generate(f"{output_path}.woff")
+            font.generate(f"{output_path}.woff2") # note: requires libwoff2 binary
+            DemoWebArtifactGenerator.generate_all(output_dir, font.familyname, glyphs_info)
             print(f"Font generated successfully: {output_path}")
         except Exception as e:
             print(f"Error generating font binaries: {str(e)}")
@@ -122,6 +124,7 @@ class FontBuilder:
     def create_ligature_font(
         cls,
         input_dir: str,
+        output_dir: str,
         font_family: str,
         font_weight: str = "Regular",
         base_font_path: Optional[str] = None,
@@ -136,7 +139,10 @@ class FontBuilder:
         if base_font_path and not os.path.isabs(base_font_path):
             resolved_font_path = os.path.join(input_dir, base_font_path)
 
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+
         font = cls.load_font(font_family, font_weight, resolved_font_path)
         glyphs_info = cls.process_vectors_into_ligatures(input_dir, font, feature_tag, start_unicode)
-        cls.export_font(input_dir, font, glyphs_info)
+        cls.export_font(input_dir, output_dir, font, glyphs_info)
         return font

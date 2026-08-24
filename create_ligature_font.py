@@ -1,7 +1,8 @@
-from ligature_font import FontBuilder
+from ligature_font import FontBuilder, UnicodeBlock
 
 """
-Generates OTF/TTF fonts given the font details and CSS/HTML preview files from an SVG directory.
+Sample script that Generates OTF/TTF/WOFF/WOFF2 fonts given the font resources
+and CSS/HTML preview files from an SVG directory.
 
 note:
 - https://github.com/adobe-fonts/source-sans
@@ -11,10 +12,11 @@ note:
 
 if __name__ == "__main__":
     FontBuilder.create_ligature_font(
-        input_dir = r"D:\git\LigatureIconGenerator\fontTest",
-        base_font_path = "SourceSans3-Regular.ttf",
+        input_dir = r"D:\git\LigatureIconGenerator\resources",
+        output_dir=r"D:\git\LigatureIconGenerator\resources\font",
+        base_font_path = "./base-font/SourceSans3-Regular.ttf",
         font_family = "GameIcons",
         font_weight = "Regular",
         feature_tag = "liga",
-        start_unicode = 0xE000 # Basic Private Use Area (PUA-A)
+        start_unicode = UnicodeBlock.PUA_BASIC
     )

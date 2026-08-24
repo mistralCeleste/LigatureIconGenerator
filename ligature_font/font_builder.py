@@ -119,7 +119,7 @@ class FontBuilder:
             font.generate(f"{output_path}.ttf")
             font.generate(f"{output_path}.woff")
             font.generate(f"{output_path}.woff2")
-            DemoWebArtifactGenerator.generate_all(output_dir, font.familyname, glyphs_info)
+            DemoWebArtifactGenerator.generate_all(output_dir, font.familyname, font.weight, glyphs_info)
             print(f"Font successfully exported to: {output_path}")
         except Exception as e:
             print(f"Error generating font files: {str(e)}")

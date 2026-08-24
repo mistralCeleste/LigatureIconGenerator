@@ -45,11 +45,11 @@ For a custom input directory, use the API directly:
 from ligature_font import FontBuilder, UnicodeBlock
 
 FontBuilder.create_ligature_font(
-    input_dir=r"C:\path\to\glyphs",
-    output_dir=r"C:\path\to\compile-font-files",
+    input_dir=r"./path/to/input",
+    output_dir=r"./path/to/ouput",
     font_family="MyIcons",
     font_weight="Regular",
-    base_font_path = "./base-font/SourceSans3-Regular.ttf",
+    base_font_path = "./SourceSans3-Regular.ttf",
     feature_tag="liga",
     start_unicode=UnicodeBlock.PUA_BASIC, # Basic Private Use Area (PUA-A)
 )

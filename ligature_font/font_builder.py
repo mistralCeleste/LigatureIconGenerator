@@ -2,6 +2,7 @@
 import fontforge
 from typing import Optional, List
 
+from .unicode_block import UnicodeBlock
 from .fonts import FontLoader, SVGGlyphBuilder
 from .models import FontTableConfig, GlyphInfo
 from .web import DemoWebArtifactGenerator
@@ -99,7 +100,6 @@ class FontBuilder:
     @classmethod
     def export_font(
         cls,
-        input_dir: str,
         output_dir: str,
         font: fontforge.font,
         glyphs_info: List[GlyphInfo]
@@ -126,23 +126,24 @@ class FontBuilder:
         input_dir: str,
         output_dir: str,
         font_family: str,
-        font_weight: str = "Regular",
-        base_font_path: Optional[str] = None,
-        feature_tag: str = "icon",
-        start_unicode: int = 0xE000
+        font_weight: str,
+        base_font_path: str,
+        feature_tag: str,
+        start_unicode: int = UnicodeBlock.PUA_BASIC
     ) -> fontforge.font:
         """
         Generates OTF/TTF fonts given the font details and CSS/HTML preview files from an SVG directory.
         """
-        resolved_font_path = base_font_path
+        resolved_font_path = base_font_path if os.path.isabs(base_font_path) else os.path.join(input_dir, base_font_path)
+        resolved_output_dir = output_dir if os.path.isabs(output_dir) else os.path.join(input_dir, output_dir)
 
-        if base_font_path and not os.path.isabs(base_font_path):
-            resolved_font_path = os.path.join(input_dir, base_font_path)
+        if not os.path.exists(resolved_font_path):
+            raise ValueError(f"Base font path does not exist: {resolved_font_path}")
 
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
+        if not os.path.exists(resolved_output_dir):
+            os.makedirs(resolved_output_dir)
 
         font = cls.load_font(font_family, font_weight, resolved_font_path)
         glyphs_info = cls.process_vectors_into_ligatures(input_dir, font, feature_tag, start_unicode)
-        cls.export_font(input_dir, output_dir, font, glyphs_info)
+        cls.export_font(resolved_output_dir, font, glyphs_info)
         return font

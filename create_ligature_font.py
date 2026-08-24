@@ -12,9 +12,9 @@ note:
 
 if __name__ == "__main__":
     FontBuilder.create_ligature_font(
-        input_dir = r"D:\git\LigatureIconGenerator\resources",
-        output_dir=r"D:\git\LigatureIconGenerator\resources\font",
-        base_font_path = "./base-font/SourceSans3-Regular.ttf",
+        input_dir = r"./resources",
+        output_dir="./output",
+        base_font_path = "./SourceSans3-Regular.ttf",
         font_family = "GameIcons",
         font_weight = "Regular",
         feature_tag = "liga",

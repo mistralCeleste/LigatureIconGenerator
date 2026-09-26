@@ -64,17 +64,25 @@ pushd D:/git/LigatureIconGenerator
 For a custom input directory, use the API directly:
 
 ```python
-from ligature_font import FontBuilder, FontBuildTargetSettings
+from ligature_font import FontBuilder, FontBuildTargetSettings, FontMetadataConfig
 
 if __name__ == "__main__":
     font_builder = FontBuilder()
 
+    metadata = FontMetadataConfig \
+    (
+        copyright="Copyright 2026 etc. etc."
+        , trademark="Source is a trademark of Adobe."
+        , license_url="http://scripts.sil.org/OFL"
+    )
+    
     font_build_settings = FontBuildTargetSettings(
         input_dir=r"./resources/GameIcons",
         output_dir = "./.build",
         font_family="GameIcons",
         font_weight="Regular",
-        base_font_path="../SourceSans3-Regular.ttf"
+        base_font_path="../SourceSans3-Regular.ttf",
+        metadata_config=metadata
     )
 
     font_builder.build(font_build_settings)
@@ -124,3 +132,6 @@ The Adobe Source Sans Pro font is licensed under the SIL Open Font License, Vers
 This means you may use it freely in your projects as a base font, but
 - You must rename the font file to something other than 'SourceSans3' to avoid confusion.
 - You must include the license file and retain the copyright notice in your distribution.
+
+To help with licensing, copyright, and attributions, use the `FontMetadataConfig` class
+to complete the metadata for your font.

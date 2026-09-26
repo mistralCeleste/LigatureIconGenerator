@@ -1,11 +1,12 @@
-﻿from dataclasses import dataclass
-from typing import Optional
+﻿from dataclasses import dataclass, field
+from .font_metadata_config import FontMetadataConfig
+
 
 @dataclass
 class FontBuildTargetSettings:
-    """Describes the target font metadata and base template font."""
     input_dir: str
+    output_dir: str
     font_family: str
-    font_weight: str = "Regular"
-    output_dir: Optional[str] = None
-    base_font_path: Optional[str] = None
+    font_weight: str
+    base_font_path: str
+    metadata_config: FontMetadataConfig = field(default_factory=FontMetadataConfig)

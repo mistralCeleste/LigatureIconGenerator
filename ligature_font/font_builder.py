@@ -5,6 +5,7 @@ from typing import Callable, List, Optional, Tuple
 from .loaders import FontLoader, SVGGlyphLoader
 from .generators import DemoWebArtifactGenerator
 from .font_table_config import FontTableConfig
+from .font_metadata_config import FontMetadataConfig
 from .glyph_info import GlyphInfo
 from .font_build_target_settings import FontBuildTargetSettings
 
@@ -15,11 +16,16 @@ class FontBuilder:
     fonts across various SVG input directories and font metadata.
     """
 
+    # OpenType OS/2 numeric weight values (usWeightClass)
     WEIGHT_MAP = {
         "Thin": 100,
         "ExtraLight": 200,
         "Light": 300,
         "Regular": 400,
+        "It": 400,          # Standalone Italic defaults to Regular weight (400)
+        "Italic": 400,
+        "Medium": 500,
+        "Semibold": 600,
         "Bold": 700,
         "ExtraBold": 800,
         "Black": 900
@@ -35,13 +41,22 @@ class FontBuilder:
 
 
     @classmethod
-    def get_os2_font_weight(
-        cls,
-        font_weight: str
-    ) -> int:
-        if font_weight in cls.WEIGHT_MAP:
-            return cls.WEIGHT_MAP[font_weight]
-        raise ValueError(f"Invalid font weight: {font_weight}. Expected one of {list(cls.WEIGHT_MAP.keys())}")
+    def get_os2_font_weight(cls, font_weight: str) -> int:
+        """
+        Extracts the base weight name (stripping 'It' / 'Italic')
+        and looks up the OS/2 numeric weight value.
+        """
+        # Strip trailing 'It' or 'Italic' if present (e.g., "BoldIt" -> "Bold")
+        base_weight = font_weight.replace("Italic", "").replace("It", "").strip()
+
+        # Handle standalone "It" or "Italic"
+        if not base_weight:
+            base_weight = "Regular"
+
+        if base_weight in cls.WEIGHT_MAP:
+            return cls.WEIGHT_MAP[base_weight]
+
+        raise ValueError(f"Invalid font weight: '{font_weight}'. Expected base weight to be one of {list(cls.WEIGHT_MAP.keys())}")
 
 
     @staticmethod
@@ -53,6 +68,38 @@ class FontBuilder:
             return None
         return target_path if os.path.isabs(target_path) else os.path.normpath(os.path.join(base_dir, target_path))
 
+    @staticmethod
+    def apply_metadata_config(font: fontforge.font, metadata: FontMetadataConfig):
+        """
+        Overwrites OpenType SFNT Name table entries from a FontMetadataConfig instance.
+        Clears preexisting Copyright entries across all platforms/languages to prevent duplicates.
+        """
+        font.copyright = metadata.copyright
+        new_sfnt_names = []
+
+        for lang, name_id, value in font.sfnt_names:
+            if name_id == 0:
+                new_sfnt_names.append((lang, name_id, metadata.copyright))
+            else:
+                new_sfnt_names.append((lang, name_id, value))
+        font.sfnt_names = tuple(new_sfnt_names)
+
+        metadata_map = {
+            "Copyright": metadata.copyright,
+            "Manufacturer": metadata.manufacturer,
+            "Vendor URL": metadata.vendor_url,
+            "Designer": metadata.designer,
+            "Designer URL": metadata.designer_url,
+            "Trademark": metadata.trademark,
+            "License URL": metadata.license_url,
+            "License": metadata.license_description,
+        }
+
+        for name_key, value in metadata_map.items():
+            if value:
+                font.appendSFNTName("English (US)", name_key, value)
+
+
     def load_font(self, settings: FontBuildTargetSettings) -> fontforge.font:
         abs_input_dir = os.path.abspath(settings.input_dir)
         resolved_base_path = self._resolve_path(abs_input_dir, settings.base_font_path)
@@ -61,11 +108,65 @@ class FontBuilder:
             raise FileNotFoundError(f"Base font file does not exist: {resolved_base_path}")
 
         font = FontLoader.load_font(resolved_base_path)
-        font.familyname = settings.font_family
-        font.weight = settings.font_weight
-        font.os2_weight = self.get_os2_font_weight(settings.font_weight)
-        font.fontname = f"{font.familyname}-{font.weight}"
-        font.fullname = f"{font.familyname} {font.weight}"
+
+        # 1. Normalize weight and style strings
+        raw_weight = settings.font_weight  # e.g., "ExtraLightIt", "Regular", "It"
+        is_italic = "It" in raw_weight or "Italic" in raw_weight
+
+        weight_name = raw_weight.replace("Italic", "").replace("It", "").strip()
+        if not weight_name:
+            weight_name = "Regular"
+
+        if raw_weight in ["It", "Italic"]:
+            ps_suffix = "Italic"
+        else:
+            ps_suffix = raw_weight.replace("It", "Italic")
+
+        postscript_name = f"{settings.font_family}-{ps_suffix}"
+
+        if weight_name == "Regular":
+            subfamily_style = "Italic" if is_italic else "Regular"
+        else:
+            subfamily_style = f"{weight_name} Italic" if is_italic else weight_name
+
+        full_name = f"{settings.font_family} {subfamily_style}"
+
+        cleaned_sfnt_names = [
+            (lang, name_id, val)
+            for lang, name_id, val in font.sfnt_names
+            if name_id not in [1, 2, 3, 4, 6, 16, 17]
+        ]
+        font.sfnt_names = tuple(cleaned_sfnt_names)
+
+        font.appendSFNTName(0x0409, 3, f"3.052;MS;{postscript_name}")  # ID 3: Unique ID
+        font.appendSFNTName(0x0409, 4, full_name)  # ID 4: Full Name
+        font.appendSFNTName(0x0409, 6, postscript_name)  # ID 6: PostScript Name
+
+        is_ribbi = raw_weight in [
+            "Regular",
+            "It",
+            "Italic",
+            "RegularIt",
+            "Bold",
+            "BoldIt",
+            "BoldItalic",
+        ]
+
+        if is_ribbi:
+            # RIBBI fonts MUST ONLY use ID 1 and ID 2 (IDs 16 & 17 MUST NOT BE PRESENT)
+            font.appendSFNTName(0x0409, 1, settings.font_family)
+            font.appendSFNTName(0x0409, 2, subfamily_style)
+            print(f"SFNT Names:\n  Family: {settings.font_family}\n  SubFamily: {subfamily_style}\n  Fullname: {full_name}\n  Postscript Name:{postscript_name}\n")
+        else:
+            # Non-RIBBI fonts (ExtraLight, Light, Medium, Semibold, Black)
+            legacy_family = f"{settings.font_family} {weight_name}"
+            legacy_subfamily = "Italic" if is_italic else "Regular"
+            font.appendSFNTName(0x0409, 1, legacy_family)
+            font.appendSFNTName(0x0409, 2, legacy_subfamily)
+            font.appendSFNTName(0x0409, 16, settings.font_family)
+            font.appendSFNTName(0x0409, 17, subfamily_style)
+            print(f"SFNT Names:\n  Family: {legacy_family}\n  SubFamily: {legacy_subfamily}\n  Fullname: {full_name}\n  Postscript Name:{postscript_name}\n  Preferred Family: {settings.font_family}\n  Preferred Styles: {subfamily_style}\n")
+
         return font
 
 
@@ -128,8 +229,8 @@ class FontBuilder:
 
 
     def load_and_process_glyphs(
-            self,
-            font_build_settings: FontBuildTargetSettings
+        self,
+        font_build_settings: FontBuildTargetSettings
     ) -> Tuple[fontforge.font, List[GlyphInfo]]:
         font = self.load_font(font_build_settings)
         abs_input_dir = os.path.abspath(font_build_settings.input_dir)

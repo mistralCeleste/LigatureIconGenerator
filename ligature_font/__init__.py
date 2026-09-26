@@ -6,6 +6,7 @@ The pieces are assembled by ``create_ligature_font`` in ``create_ligature_font.p
 from .loaders import FontLoader, SVGGlyphLoader, FontTableConfig, UnicodeBlock
 from .font_builder import FontBuilder
 from .glyph_info import GlyphInfo
+from .font_metadata_config import FontMetadataConfig
 from .font_build_target_settings import FontBuildTargetSettings
 
 __all__ = [
@@ -13,6 +14,7 @@ __all__ = [
     "FontBuilder",
     "FontBuildTargetSettings",
     "FontTableConfig",
+    "FontMetadataConfig",
     "GlyphInfo",
     "SVGGlyphLoader",
     "UnicodeBlock"

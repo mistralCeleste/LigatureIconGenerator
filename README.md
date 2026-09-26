@@ -7,8 +7,10 @@ SVG becomes a glyph and its filename becomes the ligature name.
 
 - FontForge with `ffpython` (https://github.com/fontforge/fontforge)
 - A FontForge Python installation that provides the `fontforge` module
+- Python 3.6 or higher
+- A base font, like from https://github.com/adobe-fonts/source-sans
 
-On Windows, the interpreter may be located at:
+On Windows, the FontForge interpreter may be located at:
 
 ```text
 C:\Program Files (x86)\FontForgeBuilds\bin\ffpython.exe
@@ -29,30 +31,53 @@ as the ligature name. For example:
 The generated font can then be used with ligatures such as `alarm`,
 `arrow-right`, and `github`.
 
+A good place to find free vector icons:
+- [Game-icons.net](https://game-icons.net/) - [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). 
+- [Noun Project](https://thenounproject.com/) - [Various Licenses](https://thenounproject.com/legal/terms-of-use/#icon-licenses)
+
+
+## Steps
+
+1. Get this repo
+2. Create a `MyFont` folder, named with your font name
+3. Put your base font there, like SourceSans3-Regular.otf 
+4. Put your SVG icons in the `MyFont/glyphs` folder
+5. Clone and/or edit `create_ligature_font.py` using in your own parameters
+6. Run the FontForge ffpython.exe with your script
+7. Get the generated font from the output directory
+
 
 ## Example usage
 
+
+### Running the Script
+
 Run this with FontForge's Python interpreter from the project directory:
 
-```powershell
-& "C:\Program Files (x86)\FontForgeBuilds\bin\ffpython.exe" `
-  .\ligature_creator.py
+```commandline
+pushd D:/git/LigatureIconGenerator
+"C:\Program Files (x86)\FontForgeBuilds\bin\ffpython.exe" .\create_ligature_font.py
 ```
+
+### Using the Script
 
 For a custom input directory, use the API directly:
 
 ```python
-from ligature_font import FontBuilder, UnicodeBlock
+from ligature_font import FontBuilder, FontBuildTargetSettings
 
-FontBuilder.create_ligature_font(
-    input_dir=r"./path/to/input",
-    output_dir=r"./path/to/ouput",
-    font_family="MyIcons",
-    font_weight="Regular",
-    base_font_path = "./SourceSans3-Regular.ttf",
-    feature_tag="liga",
-    start_unicode=UnicodeBlock.PUA_BASIC, # Basic Private Use Area (PUA-A)
-)
+if __name__ == "__main__":
+    font_builder = FontBuilder()
+
+    font_build_settings = FontBuildTargetSettings(
+        input_dir=r"./resources/GameIcons",
+        output_dir = "./.build",
+        font_family="GameIcons",
+        font_weight="Regular",
+        base_font_path="../SourceSans3-Regular.ttf"
+    )
+
+    font_builder.build(font_build_settings)
 ```
 
 `base_font_path` is a local font path/filename. A relative local font path is
@@ -67,6 +92,12 @@ Note that if `feature_tag` is omitted, the generator uses the default value `lig
 Common values to use are `liga`, `dlig`, or `calt`. Most apps have liga enabled by default.
 If using anything else, custom, like 'icon', it may become unusable by standard apps,
 and it must be referenced directly, like with a custom CSS reference.
+
+
+### The batch script
+
+Similar to the `create_ligature_font`, there is the `create_ligature_font_with_variants`
+which is a script that generates a ligature font with all the variants.
 
 
 ## Output
@@ -85,3 +116,11 @@ The generator writes these files into the input directory with
 ```
 
 The CSS and HTML files provide a simple preview of the generated ligatures.
+
+
+## Note on Licensing
+
+The Adobe Source Sans Pro font is licensed under the SIL Open Font License, Version 1.1.
+This means you may use it freely in your projects as a base font, but
+- You must rename the font file to something other than 'SourceSans3' to avoid confusion.
+- You must include the license file and retain the copyright notice in your distribution.

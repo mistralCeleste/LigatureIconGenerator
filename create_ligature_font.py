@@ -7,7 +7,6 @@ and CSS/HTML preview files from an SVG directory.
 
 note:
 - https://github.com/adobe-fonts/source-sans
-- https://github.com/adobe-fonts/source-sans/raw/refs/heads/release/TTF/SourceSans3-Regular.ttf
 """
 
 
@@ -19,7 +18,7 @@ if __name__ == "__main__":
         output_dir = "./.build",
         font_family="GameIcons",
         font_weight="Regular",
-        base_font_path="../SourceSans3-Regular.ttf"
+        base_font_path="../source-sans-release/OTF/SourceSans3-Regular.otf"
     )
 
     font_builder.build(font_build_settings)

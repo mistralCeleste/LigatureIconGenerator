@@ -18,18 +18,23 @@ C:\Program Files (x86)\FontForgeBuilds\bin\ffpython.exe
 
 ## Input files
 
-Place SVG files in an input directory. The filename (without `.svg`) is used
-as the ligature name. For example:
+Place SVG files in an input directory. Do not use spaces or underscores in the file name since Font Forge cannot use them.
+The filename (without `.svg`) is used as the ligature name.  Any hyphens used will be removed.
+
+For example:
 
 ```text
 ./glyphs/
 |-- alarm.svg
 |-- arrow-right.svg
-|-- github.svg
+|-- d6.svg
 ```
 
-The generated font can then be used with ligatures such as `alarm`,
-`arrow-right`, and `github`.
+The generated font can then be used with ligatures such as `alarm`, `arrowright`, and `d6`.
+By default, the font table config uses square brackets around the ligature name (this can be overridden).
+Adobe Fonts use AGLFN GlyphNames and can be referenced at https://github.com/adobe-type-tools/agl-aglfn.
+
+Glyphs will be created, and you can use them like `[alarm]`, `[arrowright]`, or `[d6]`, for example.
 
 A good place to find free vector icons:
 - [Game-icons.net](https://game-icons.net/) - [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). 
@@ -71,17 +76,18 @@ if __name__ == "__main__":
 
     metadata = FontMetadataConfig \
     (
-        copyright="Copyright 2026 etc. etc."
+        copyright="Copyright 2026"
         , trademark="Source is a trademark of Adobe."
         , license_url="http://scripts.sil.org/OFL"
     )
     
-    font_build_settings = FontBuildTargetSettings(
-        input_dir=r"./resources/GameIcons",
+    font_build_settings = FontBuildTargetSettings \
+    (
+        input_dir=r"./resources/MyFont",
         output_dir = "./.build",
-        font_family="GameIcons",
+        font_family="MyFont",
         font_weight="Regular",
-        base_font_path="../SourceSans3-Regular.ttf",
+        base_font_path="../SourceSans3-Regular.otf",
         metadata_config=metadata
     )
 
@@ -107,6 +113,8 @@ and it must be referenced directly, like with a custom CSS reference.
 Similar to the `create_ligature_font`, there is the `create_ligature_font_with_variants`
 which is a script that generates a ligature font with all the variants.
 
+Font Forge does not support asynchronous executions, unless in its own process due to its shared memory model.
+
 
 ## Output
 
@@ -126,7 +134,7 @@ The generator writes these files into the input directory with
 The CSS and HTML files provide a simple preview of the generated ligatures.
 
 
-## Note on Licensing
+## Note on Licensing and Attribution
 
 The Adobe Source Sans Pro font is licensed under the SIL Open Font License, Version 1.1.
 This means you may use it freely in your projects as a base font, but

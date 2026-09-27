@@ -13,7 +13,6 @@ def build_single_variant_with_logging(args):
     placed directly in the build output directory (relative to input_dir).
     """
     font_family, font_weight, base_font_path, svg_input_dir, build_output_dir = args
-
     abs_input_dir = os.path.abspath(svg_input_dir)
 
     # Resolve base_font_path relative to svg_input_dir matching FontBuilder's internal logic
@@ -23,7 +22,7 @@ def build_single_variant_with_logging(args):
         else os.path.normpath(os.path.join(abs_input_dir, base_font_path))
     )
 
-    # FIX: Resolve resolved_output_dir relative to svg_input_dir matching FontBuilder's internal export logic
+    # Resolve resolved_output_dir relative to svg_input_dir matching FontBuilder's internal export logic
     resolved_output_dir = (
         build_output_dir
         if os.path.isabs(build_output_dir)
@@ -118,8 +117,7 @@ if __name__ == "__main__":
         tasks.append((font_family, font_weight, base_font_path, svg_input_dir, build_output_dir))
 
     print(f"🚀 Starting parallel batch generation for {len(variants)} variants...")
-    print(
-        f"📁 Font and Log files will be saved inside: {os.path.normpath(os.path.join(svg_input_dir, build_output_dir))}\n")
+    print(f"📁 Font and Log files will be saved inside: {os.path.normpath(os.path.join(svg_input_dir, build_output_dir))}\n")
 
     start_total_time = time.time()
     max_workers = min(os.cpu_count() or 4, len(variants))

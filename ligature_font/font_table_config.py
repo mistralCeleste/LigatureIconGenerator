@@ -4,15 +4,21 @@ from typing import Tuple, Optional
 from .unicode_block import UnicodeBlock
 
 
+GlyphName = Optional[str]
+
 @dataclass
 class FontTableConfig:
-    """Configuration for GSUB OpenType feature tables."""
+    """
+    Configuration for GSUB OpenType feature tables.
+
+    Note: Adobe Fonts use AGLFN GlyphNames and can be referenced at https://github.com/adobe-type-tools/agl-aglfn.
+    """
     lookup_name: str = "liga"
     subtable_name: str = "liga subtable"
     lookup_type: str = "gsub_ligature"
     start_unicode: int = UnicodeBlock.PUA_BASIC
-    ligature_start: Optional[str] = 'bracketleft'
-    ligature_end: Optional[str] = 'bracketright'
+    ligature_start: GlyphName = 'bracketleft'
+    ligature_end: GlyphName = 'bracketright'
     flags: Tuple = field(default_factory=tuple)
     features: Tuple = field(default_factory=tuple)
 

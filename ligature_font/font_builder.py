@@ -68,36 +68,52 @@ class FontBuilder:
             return None
         return target_path if os.path.isabs(target_path) else os.path.normpath(os.path.join(base_dir, target_path))
 
+
     @staticmethod
     def apply_metadata_config(font: fontforge.font, metadata: FontMetadataConfig):
         """
         Overwrites OpenType SFNT Name table entries from a FontMetadataConfig instance.
-        Clears preexisting Copyright entries across all platforms/languages to prevent duplicates.
+        Purges legacy Adobe metadata IDs before appending custom organization info.
         """
-        font.copyright = metadata.copyright
-        new_sfnt_names = []
+        if not metadata:
+            return
 
-        for lang, name_id, value in font.sfnt_names:
-            if name_id == 0:
-                new_sfnt_names.append((lang, name_id, metadata.copyright))
-            else:
-                new_sfnt_names.append((lang, name_id, value))
-        font.sfnt_names = tuple(new_sfnt_names)
+        # High-level FontForge attributes
+        if metadata.copyright:
+            font.copyright = metadata.copyright
 
-        metadata_map = {
-            "Copyright": metadata.copyright,
-            "Manufacturer": metadata.manufacturer,
-            "Vendor URL": metadata.vendor_url,
-            "Designer": metadata.designer,
-            "Designer URL": metadata.designer_url,
-            "Trademark": metadata.trademark,
-            "License URL": metadata.license_url,
-            "License": metadata.license_description,
-        }
+        # Purge legacy metadata IDs (0, 7, 8, 9, 10, 11, 12, 13, 14)
+        metadata_ids = [0, 7, 8, 9, 10, 11, 12, 13, 14]
+        cleaned_sfnt = [
+            (lang, name_id, val)
+            for lang, name_id, val in font.sfnt_names
+            if name_id not in metadata_ids
+        ]
+        font.sfnt_names = tuple(cleaned_sfnt)
 
-        for name_key, value in metadata_map.items():
-            if value:
-                font.appendSFNTName("English (US)", name_key, value)
+        # Map metadata fields to their exact OpenType Name IDs (English US: 0x0409)
+        # ID 0:  Copyright
+        # ID 7:  Trademark
+        # ID 8:  Manufacturer (Windows "Company")
+        # ID 9:  Designer (Windows "Authors")
+        # ID 11: Vendor URL
+        # ID 12: Designer URL
+        # ID 13: License Description
+        # ID 14: License Info URL
+        id_mappings = [
+            (0, metadata.copyright),
+            (7, metadata.trademark),
+            (8, metadata.manufacturer),
+            (9, metadata.designer),
+            (11, metadata.vendor_url),
+            (12, metadata.designer_url),
+            (13, metadata.license_description),
+            (14, metadata.license_url),
+        ]
+
+        for name_id, val in id_mappings:
+            if val:
+                font.appendSFNTName(0x0409, name_id, val)
 
 
     def load_font(self, settings: FontBuildTargetSettings) -> fontforge.font:
@@ -131,17 +147,35 @@ class FontBuilder:
 
         full_name = f"{settings.font_family} {subfamily_style}"
 
+        # 2. Set FontForge properties
+        font.familyname = settings.font_family
+        font.weight = settings.font_weight
+        font.os2_weight = self.get_os2_font_weight(settings.font_weight)
+        font.fontname = postscript_name
+        font.fullname = full_name
+        font.fontlog = ""
+        font.os2_vendor = "MLSF"
+
+        # 3. Purge ALL structural and metadata SFNT Name IDs from the base Adobe font
+        # IDs 0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17
+        purge_ids = [0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17]
         cleaned_sfnt_names = [
             (lang, name_id, val)
             for lang, name_id, val in font.sfnt_names
-            if name_id not in [1, 2, 3, 4, 6, 16, 17]
+            if name_id not in purge_ids
         ]
         font.sfnt_names = tuple(cleaned_sfnt_names)
 
-        font.appendSFNTName(0x0409, 3, f"3.052;MS;{postscript_name}")  # ID 3: Unique ID
-        font.appendSFNTName(0x0409, 4, full_name)  # ID 4: Full Name
-        font.appendSFNTName(0x0409, 6, postscript_name)  # ID 6: PostScript Name
+        # 4. Apply custom metadata (Copyright, Manufacturer/Company, Designer/Author, etc.)
+        if settings.metadata_config:
+            self.apply_metadata_config(font, settings.metadata_config)
 
+        # 5. Append mandatory OpenType structural IDs (0x0409 = US English)
+        font.appendSFNTName(0x0409, 3, f"3.052;MS;{postscript_name}")  # ID 3: Unique ID
+        font.appendSFNTName(0x0409, 4, full_name)                       # ID 4: Full Name
+        font.appendSFNTName(0x0409, 6, postscript_name)                 # ID 6: PostScript Name
+
+        # 6. RIBBI vs Non-RIBBI logic
         is_ribbi = raw_weight in [
             "Regular",
             "It",
@@ -153,19 +187,17 @@ class FontBuilder:
         ]
 
         if is_ribbi:
-            # RIBBI fonts MUST ONLY use ID 1 and ID 2 (IDs 16 & 17 MUST NOT BE PRESENT)
+            # RIBBI fonts MUST ONLY use ID 1 and ID 2
             font.appendSFNTName(0x0409, 1, settings.font_family)
             font.appendSFNTName(0x0409, 2, subfamily_style)
-            print(f"SFNT Names:\n  Family: {settings.font_family}\n  SubFamily: {subfamily_style}\n  Fullname: {full_name}\n  Postscript Name:{postscript_name}\n")
         else:
-            # Non-RIBBI fonts (ExtraLight, Light, Medium, Semibold, Black)
+            # Non-RIBBI fonts
             legacy_family = f"{settings.font_family} {weight_name}"
             legacy_subfamily = "Italic" if is_italic else "Regular"
             font.appendSFNTName(0x0409, 1, legacy_family)
             font.appendSFNTName(0x0409, 2, legacy_subfamily)
             font.appendSFNTName(0x0409, 16, settings.font_family)
             font.appendSFNTName(0x0409, 17, subfamily_style)
-            print(f"SFNT Names:\n  Family: {legacy_family}\n  SubFamily: {legacy_subfamily}\n  Fullname: {full_name}\n  Postscript Name:{postscript_name}\n  Preferred Family: {settings.font_family}\n  Preferred Styles: {subfamily_style}\n")
 
         return font
 
@@ -216,7 +248,7 @@ class FontBuilder:
 
         output_path = os.path.join(output_dir, font.fontname)
         try:
-            font.generate(f"{output_path}.otf")
+            font.generate(f"{output_path}.otf", flags=("opentype",))
             font.generate(f"{output_path}.ttf")
             font.generate(f"{output_path}.woff")
             font.generate(f"{output_path}.woff2")

@@ -171,7 +171,8 @@ class FontBuilder:
             self.apply_metadata_config(font, settings.metadata_config)
 
         # 5. Append mandatory OpenType structural IDs (0x0409 = US English)
-        font.appendSFNTName(0x0409, 3, f"3.052;MS;{postscript_name}")  # ID 3: Unique ID
+        font_id = f"1.000;{font.os2_vendor};{postscript_name}"
+        font.appendSFNTName(0x0409, 3, font_id)  # ID 3: Unique ID
         font.appendSFNTName(0x0409, 4, full_name)                       # ID 4: Full Name
         font.appendSFNTName(0x0409, 6, postscript_name)                 # ID 6: PostScript Name
 
@@ -186,6 +187,12 @@ class FontBuilder:
             "BoldItalic",
         ]
 
+        if raw_weight in ["It", "Italic"]:
+            font.os2_stylemap |= 1
+
+        if raw_weight in ["Bold"]:
+            font.os2_stylemap |= 32
+
         if is_ribbi:
             # RIBBI fonts MUST ONLY use ID 1 and ID 2
             font.appendSFNTName(0x0409, 1, settings.font_family)
@@ -199,6 +206,7 @@ class FontBuilder:
             font.appendSFNTName(0x0409, 16, settings.font_family)
             font.appendSFNTName(0x0409, 17, subfamily_style)
 
+        print(f"Unique Id: {font_id}")
         return font
 
 
